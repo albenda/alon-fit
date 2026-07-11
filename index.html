@@ -401,11 +401,12 @@ async function lastWorkoutStats(kind){
   });
   return m;
 }
+const W_SCHEMA=3;
 async function startWorkout(kind){
   if(curWorkout){toast('יש אימון פתוח - סיים או בטל אותו');go('workout');return;}
   if(!confirm('להתחיל אימון '+kind+'? השעון יתחיל לרוץ.')) return;
   const prev=await lastWorkoutStats(kind);
-  curWorkout={kind, started:Date.now(), curEx:0, phase:'ready', phaseStart:Date.now(),
+  curWorkout={v:W_SCHEMA, kind, started:Date.now(), curEx:0, phase:'ready', phaseStart:Date.now(),
     pendingSecs:0, items:PROGRAM[kind].map(p=>{
       const target=parseInt(p.reps);
       let weight=p.start, note='';
@@ -421,8 +422,17 @@ async function startWorkout(kind){
   persistWorkout(); renderWorkout(); go('workout'); startTicker();
 }
 function persistWorkout(){localStorage.setItem('curWorkout',JSON.stringify(curWorkout));}
-function restoreWorkout(){const s=localStorage.getItem('curWorkout');
-  if(s){curWorkout=JSON.parse(s);renderWorkout();startTicker();}}
+function restoreWorkout(){
+  try{
+    const s=localStorage.getItem('curWorkout');
+    if(!s) return;
+    const w=JSON.parse(s);
+    if(w.v!==W_SCHEMA||typeof w.curEx!=='number'||!Array.isArray(w.items)||!w.items[0]||!Array.isArray(w.items[0].logs)){
+      localStorage.removeItem('curWorkout');return;
+    }
+    curWorkout=w;renderWorkout();startTicker();
+  }catch(e){localStorage.removeItem('curWorkout');curWorkout=null;}
+}
 function progItem(ex){return PROGRAM[curWorkout.kind].find(p=>p.ex===ex)||{};}
 function fmtT(sec){sec=Math.max(0,Math.floor(sec));return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');}
 
@@ -450,8 +460,16 @@ function startTicker(){
 }
 function renderWorkout(){
   const area=document.getElementById('wArea');
+  if(curWorkout&&(!curWorkout.items||!curWorkout.items[curWorkout.curEx])){
+    localStorage.removeItem('curWorkout');curWorkout=null;
+  }
   if(!curWorkout){
-    if(area)area.innerHTML='';
+    if(area)area.innerHTML=`<div class="focus"><div class="exbig">אין אימון פעיל</div>
+      <div class="setinfo" style="margin:8px 0 12px">מתחילים מעמוד "היום"</div>
+      <div class="row">
+        <button class="secondary" onclick="startWorkout('A')">התחל אימון A</button>
+        <button class="secondary" onclick="startWorkout('B')">התחל אימון B</button>
+      </div></div>`;
     const wa=document.getElementById('wActions');if(wa)wa.style.display='none';
     const tc=document.getElementById('totalclock');if(tc)tc.textContent='';
     return;
