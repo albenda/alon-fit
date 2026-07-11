@@ -16,7 +16,9 @@
     --good:#6FBF8F; --chip:#1D2E36; --bad:#E06C5A;
   }
   *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;}
   body{margin:0;background:var(--paper);color:var(--ink);
+    overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;
     font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
     padding-top:env(safe-area-inset-top);
     padding-bottom:calc(140px + env(safe-area-inset-bottom));}
@@ -958,6 +960,7 @@ function drawChart(rows){
   x.fillText(last.kg+' ק"ג',px(rows.length-1),py(last.kg)-14);
 }
 boot();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
 </script>
 </body>
 </html>
