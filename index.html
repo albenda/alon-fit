@@ -81,10 +81,11 @@
   <div class="card">
     <input type="email" id="email" placeholder="המייל שלך" value="alonabd23@gmail.com" autocomplete="email">
     <div style="height:8px"></div>
-    <button class="primary" onclick="sendLink()">שלח לי קישור התחברות</button>
+    <input type="password" id="pw" placeholder="סיסמה" autocomplete="current-password">
+    <div style="height:8px"></div>
+    <button class="primary" onclick="signIn()">התחבר</button>
     <p class="sub" id="loginmsg" style="margin-top:8px"></p>
-    <p class="sub">טיפ: את הקישור מהמייל פותחים בספארי.
-    בג'ימייל: לחיצה ארוכה על הקישור → העתק → הדבק בספארי.</p>
+    <p class="sub"><a href="#" style="color:var(--muted)" onclick="sendLink();return false;">אין סיסמה? שלח לי קישור למייל</a></p>
   </div>
 </div>
 
@@ -207,6 +208,18 @@ function toast(t){const el=document.getElementById('toast');el.textContent=t;el.
   setTimeout(()=>el.style.display='none',1800);}
 function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});}
 
+async function signIn(){
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('pw').value;
+  if(!password){document.getElementById('loginmsg').textContent='הקלד סיסמה';return;}
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){
+    document.getElementById('loginmsg').textContent=
+      /invalid/i.test(error.message)? 'מייל או סיסמה לא נכונים':'שגיאה: '+error.message;
+    return;
+  }
+  boot();
+}
 async function sendLink(){
   const email=document.getElementById('email').value.trim();
   const {error}=await sb.auth.signInWithOtp({email, options:{emailRedirectTo:location.href.split('#')[0]}});
