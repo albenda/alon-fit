@@ -165,8 +165,9 @@
       </div>
       <p class="sub" id="lastWeight"></p>
     </div>
-    <div class="card"><b>סטרייק 🔥</b> <span id="streak" class="big" style="margin-inline-start:8px">0</span>
-      <span class="sub">אימונים בשבועיים האחרונים</span></div>
+    <div class="card"><b>רצף שבועות 🔥</b> <span id="streak" class="big" style="margin-inline-start:8px">0</span>
+      <span class="sub" id="streaksub">שבועות רצופים עם 3 אימונים</span></div>
+    <div id="extras"></div>
   </div>
 
   <div class="page" id="p-workout">
@@ -245,6 +246,24 @@ const SB_KEY = "sb_publishable_fJMqMfcKPaJlxurR6xFohA_2E6NdZpA";
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 const TARGET_KCAL = 2980, TARGET_PROT = 165, REST_SEC = 150, MEAT_WAIT_H = 6;
+const BAR_KG = 10, DBBAR_KG = 2; // הערכות עד שקילה מדויקת
+const PERSIDE = [15,10,5,5,5,2.5,2.5,2.5,1.25]; // פלטות זמינות לכל צד
+const BARBELL_EX = ["לחיצת חזה","חתירת מוט","דדליפט","לחיצת כתפיים"];
+const DUMBBELL_EX = ["גובלט סקוואט","בולגרי ספליט סקוואט"];
+const MILESTONES = [
+  {kg:55, note:"הבית הישן שלך מ-2018"},
+  {kg:57, note:"הרמה של 2019"},
+  {kg:59, note:"השיא שלך מ-2022"},
+  {kg:62, note:"טריטוריה חדשה 🚀"},
+];
+function plateBreakdown(target, bar){
+  let side=(target-bar)/2;
+  if(side<0) return null;
+  if(side===0) return "מוט ריק";
+  const used=[], avail=[...PERSIDE];
+  for(const p of avail){ if(p<=side+0.001){ used.push(p); side=Math.round((side-p)*100)/100; } if(side<=0.001) break; }
+  return side<=0.001 ? used.join(" + ")+" בכל צד" : null;
+}
 
 const PROGRAM = {
   A: [
@@ -288,6 +307,15 @@ const PROGRAM = {
      cues:["2 דקות עבודה רציפה, ג'אב-קרוס","מכות מהגוף - מסובבים ירך","זזים סביב השק"]},
   ],
 };
+
+PROGRAM.other = [
+  {ex:"גובלט סקוואט", sets:2, reps:"8", rest:90, start:7.5, inc:0, img:"img/goblet.webp",
+   what:"גרסת מינימום - העיקר להופיע.", cues:["דמבל לחזה, לרדת עמוק, לקום"]},
+  {ex:"לחיצת חזה", sets:2, reps:"5", rest:90, start:10, inc:0, img:"img/bench.webp",
+   what:"גרסת מינימום.", cues:["בלי אומים, להשאיר כוח לחזרה"]},
+  {ex:"חתירת TRX", sets:2, reps:"מקס", rest:60, start:0, inc:0, img:"img/trxrow.webp",
+   what:"גרסת מינימום.", cues:["גוף קרש, למשוך חזה לידיות"]},
+];
 
 const SLOTS = [
   {slot:"בוקר", options:[
@@ -415,8 +443,78 @@ async function refreshToday(){
   renderDayCard();
   const {data:lw}=await sb.from('fit_weight').select('wdate,kg').order('wdate',{ascending:false}).limit(1);
   document.getElementById('lastWeight').textContent=(lw&&lw.length)?`אחרון: ${lw[0].kg} ק"ג (${lw[0].wdate})`:'';
-  const {count}=await sb.from('fit_workouts').select('id',{count:'exact',head:true}).gte('wdate',daysAgo(13));
-  document.getElementById('streak').textContent=count||0;
+  renderStreakAndExtras(kcal, lw&&lw.length?Number(lw[0].kg):null);
+}
+async function renderStreakAndExtras(kcalToday, lastKg){
+  const {data:wos}=await sb.from('fit_workouts').select('wdate,kind').in('kind',['A','B','other']).gte('wdate',daysAgo(120)).order('wdate');
+  const dow=new Date().getDay();
+  const weekStartOf=d=>{const x=new Date(d+'T12:00');x.setDate(x.getDate()-x.getDay());return x.toLocaleDateString('sv-SE');};
+  const byWeek={};
+  (wos||[]).forEach(w=>{const k=weekStartOf(w.wdate);byWeek[k]=(byWeek[k]||0)+1;});
+  const thisWeek=weekStartOf(today());
+  let streak=0, wk=new Date(thisWeek+'T12:00');
+  wk.setDate(wk.getDate()-7); // מתחילים מהשבוע הקודם המלא
+  while((byWeek[wk.toLocaleDateString('sv-SE')]||0)>=3){streak++;wk.setDate(wk.getDate()-7);}
+  const cur=byWeek[thisWeek]||0;
+  document.getElementById('streak').textContent=streak;
+  document.getElementById('streaksub').textContent=`שבועות מלאים רצופים · השבוע: ${cur}/3`;
+
+  let html='';
+  // crash guard: week 3-4 of current run
+  const abOnly=(wos||[]).filter(w=>w.kind!=='other');
+  if(abOnly.length){
+    const first=new Date(abOnly[0].wdate+'T12:00');
+    const daysIn=Math.floor((Date.now()-first.getTime())/864e5);
+    if(daysIn>=14&&daysIn<=28){
+      html+=`<div class="card" style="border-color:var(--b)"><b>⚠️ שבוע ${Math.floor(daysIn/7)+1} לתוכנית</b>
+        <p class="sub" style="margin:6px 0 8px">בדיוק פה נשברת ב-2021, 2024 ו-2025. הפעם לא.
+        אין כוח לאימון מלא? יש אימון מינימום של רבע שעה - העיקר להופיע.</p>
+        <button class="secondary" style="width:100%" onclick="startWorkout('other')">אימון מינימום (15 דק')</button></div>`;
+    }
+  }
+  // surf today
+  const t=today();
+  const {data:surf}=await sb.from('fit_watch').select('started_at,ended_at,kcal').eq('wtype','גלישה')
+    .gte('started_at',t+'T00:00:00').limit(3);
+  if(surf&&surf.length){
+    const mins=surf.reduce((s,x)=>s+(new Date(x.ended_at)-new Date(x.started_at))/60000,0);
+    const burn=Math.round(surf.reduce((s,x)=>s+(Number(x.kcal)||0),0))||Math.round(mins*6);
+    html+=`<div class="card"><b>🌊 גלשת היום ${Math.round(mins)} דקות</b>
+      <p class="sub" style="margin:4px 0 0">שרפת עוד ~${burn} קק"ל. תוסיף אותן היום - שייק גרסת מסה סוגר את זה.</p></div>`;
+  }
+  // road to 59
+  if(lastKg){
+    const next=MILESTONES.find(m=>m.kg>lastKg);
+    if(next){
+      const prevKg=Math.max(52, ...MILESTONES.filter(m=>m.kg<=lastKg).map(m=>m.kg), 52.45>lastKg?52:52.45);
+      const base=Math.min(lastKg,52.45);
+      const pct=Math.min(100,Math.max(0,(lastKg-base)/(next.kg-base)*100));
+      html+=`<div class="card"><b>🎯 הדרך ל-59</b>
+        <div class="barlab" style="margin-top:6px"><span>${lastKg} ק"ג</span><span>הבא: ${next.kg} - ${next.note}</span></div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <p class="sub" style="margin:4px 0 0">עוד ${(next.kg-lastKg).toFixed(1)} ק"ג. כל היעדים = שיאים ישנים שלך.</p></div>`;
+    }
+  }
+  // evening gap
+  const hour=new Date().getHours();
+  if(hour>=18&&kcalToday<TARGET_KCAL-250){
+    const gap=TARGET_KCAL-kcalToday;
+    html+=`<div class="card" style="border-color:var(--accent)"><b>🥤 חסרות עוד ${gap.toLocaleString()} קק"ל היום</b>
+      <p class="sub" style="margin:4px 0 0">${gap>500?'שייק גרסת מסה (520) + קוטג\' (220) סוגרים את רוב הפער':'שייק גרסת מסה (520 קק"ל) סוגר את זה'}. אצל בולקר, לאכול מספיק = העבודה.</p></div>`;
+  }
+  // sunday summary
+  if(dow===0){
+    const from=daysAgo(7);
+    const [{data:mw},{count:wc}]=await Promise.all([
+      sb.from('fit_meals').select('kcal,protein_g').gte('mdate',from).lt('mdate',today()),
+      sb.from('fit_workouts').select('id',{count:'exact',head:true}).gte('wdate',from).lt('wdate',today()),
+    ]);
+    const wk_kcal=(mw||[]).reduce((s,m)=>s+m.kcal,0);
+    html+=`<div class="card"><b>📋 סיכום השבוע שעבר</b>
+      <p class="sub" style="margin:4px 0 0">אימונים: ${wc||0}/3 · ממוצע יומי: ${Math.round(wk_kcal/7).toLocaleString()} קק"ל · חלבון כולל: ${(mw||[]).reduce((s,m)=>s+m.protein_g,0)} גרם.
+      שבוע חדש, ניצחונות חדשים.</p></div>`;
+  }
+  document.getElementById('extras').innerHTML=html;
 }
 
 /* ---------- smart day scheduling ---------- */
@@ -477,11 +575,22 @@ async function lastWorkoutStats(kind){
   });
   return m;
 }
+async function allTimeBests(exs){
+  const {data}=await sb.from('fit_sets').select('exercise,weight_kg,reps').in('exercise',exs);
+  const b={};
+  (data||[]).forEach(x=>{
+    const w=Number(x.weight_kg)||0, r=x.reps||0;
+    if(!b[x.exercise]||w>b[x.exercise].w||(w===b[x.exercise].w&&r>b[x.exercise].reps))
+      b[x.exercise]={w, reps:r};
+  });
+  return b;
+}
 const W_SCHEMA=3;
 async function startWorkout(kind){
   if(curWorkout){toast('יש אימון פתוח - סיים או בטל אותו');go('workout');return;}
   if(!confirm('להתחיל אימון '+kind+'? השעון יתחיל לרוץ.')) return;
   const prev=await lastWorkoutStats(kind);
+  const bests=await allTimeBests(PROGRAM[kind].map(p=>p.ex));
   curWorkout={v:W_SCHEMA, kind, started:Date.now(), curEx:0, phase:'ready', phaseStart:Date.now(),
     pendingSecs:0, items:PROGRAM[kind].map(p=>{
       const target=parseInt(p.reps);
@@ -492,8 +601,11 @@ async function startWorkout(kind){
         weight=allHit? pr.w+(p.inc||0) : pr.w;
         note=allHit&&p.inc?'עלית משקל! 📈':(p.inc?'נשאר על אותו משקל - תשלים הפעם':'');
       }
+      const pr=prev[p.ex];
       return {ex:p.ex, sets:p.sets, reps:p.reps, target:target||null, inc:p.inc,
-        rest:p.rest||90, dual:!!p.dual, weight, done:0, note, logs:[]};
+        rest:p.rest||90, dual:!!p.dual, weight, done:0, note, logs:[],
+        last: pr? pr.w+' ק"ג × '+(pr.reps.filter(r=>r!=null).join(',')||'-') : null,
+        best: bests[p.ex]||null};
     })};
   persistWorkout(); renderWorkout(); go('workout'); startTicker();
 }
@@ -586,6 +698,14 @@ function renderWorkout(){
     <div class="setinfo">תרגיל ${curWorkout.curEx+1}/${curWorkout.items.length} · סט ${Math.min(it.done+1,it.sets)}/${it.sets} · יעד: ${it.reps} חזרות</div>
     <div class="exbig">${it.ex}</div>
     <div class="wdisp">${wdisp}</div>
+    ${(()=>{
+      if(BARBELL_EX.includes(it.ex)&&it.weight){const pb=plateBreakdown(it.weight,BAR_KG);
+        return pb?`<div class="setinfo">🏋️ ${pb} (מוט ${BAR_KG})</div>`:`<div class="setinfo">⚠️ אין קומבינציית פלטות מדויקת ל-${it.weight}</div>`;}
+      if(DUMBBELL_EX.includes(it.ex)&&it.weight){const side=Math.round((it.weight-DBBAR_KG)/2*100)/100;
+        return side>0?`<div class="setinfo">🏋️ בדמבל: ${side} בכל צד (מוט ${DBBAR_KG})</div>`:'';}
+      return '';})()}
+    ${it.last?`<div class="setinfo">👻 פעם שעברה: ${it.last}</div>`:''}
+    ${it.best&&it.best.w?`<div class="setinfo">🏆 השיא שלך: ${it.best.w} ק"ג × ${it.best.reps}</div>`:''}
     ${phaseHtml}
     <div class="listtoggle"><button class="secondary" onclick="toggleEx(0)" style="width:100%">ⓘ איך עושים + תמונה</button></div>
     <div class="exdetail" id="exd0">
@@ -631,9 +751,28 @@ function endSet(){
   persistWorkout();renderWorkout();
 }
 function confirmSet(){commitSet();}
+function confetti(){
+  for(let i=0;i<26;i++){
+    const e=document.createElement('span');
+    e.textContent=['🎉','⭐','💪','🏆'][i%4];
+    e.style.cssText=`position:fixed;top:-30px;left:${Math.random()*100}vw;font-size:${18+Math.random()*16}px;z-index:99;pointer-events:none;transition:transform ${1.2+Math.random()}s ease-in,opacity 1.8s;`;
+    document.body.appendChild(e);
+    requestAnimationFrame(()=>{e.style.transform=`translateY(${window.innerHeight+60}px) rotate(${Math.random()*360}deg)`;e.style.opacity='0';});
+    setTimeout(()=>e.remove(),2400);
+  }
+}
 function commitSet(){
   const it=curWorkout.items[curWorkout.curEx];
-  it.logs.push({secs:curWorkout.pendingSecs,reps:curWorkout.pendingReps,weight:it.weight});
+  let isPr=false;
+  if(it.weight&&curWorkout.pendingReps!=null){
+    const b=it.best;
+    if(!b||!b.w||it.weight>b.w||(it.weight===b.w&&curWorkout.pendingReps>b.reps)){
+      isPr=!!(b&&b.w); // שיא רק אם יש היסטוריה לשבור
+      it.best={w:it.weight,reps:curWorkout.pendingReps};
+    }
+  }
+  if(isPr){confetti();toast('שיא אישי חדש! 🏆 '+it.weight+' ק"ג × '+curWorkout.pendingReps);}
+  it.logs.push({secs:curWorkout.pendingSecs,reps:curWorkout.pendingReps,weight:it.weight,is_pr:isPr});
   it.done++;
   if(navigator.vibrate)navigator.vibrate(60);
   if(it.done>=it.sets){
@@ -656,7 +795,7 @@ async function finishWorkout(){
   const rows=[];
   curWorkout.items.forEach(it=>{it.logs.forEach((lg,ix)=>
     rows.push({workout_id:w.id,exercise:it.ex,set_no:ix+1,weight_kg:lg.weight||null,
-      reps:lg.reps,set_secs:lg.secs,rest_secs:it.rest}));});
+      reps:lg.reps,set_secs:lg.secs,rest_secs:it.rest,is_pr:!!lg.is_pr}));});
   if(rows.length) await sb.from('fit_sets').insert(rows);
   localStorage.removeItem('curWorkout');curWorkout=null;clearInterval(restInt);
   document.getElementById('wNotes').value='';
@@ -804,6 +943,16 @@ function drawChart(rows){
   x.strokeStyle='#4FC1CB';x.lineWidth=3;x.beginPath();
   rows.forEach((r,i)=>{i?x.lineTo(px(i),py(r.kg)):x.moveTo(px(i),py(r.kg));});x.stroke();
   rows.forEach((r,i)=>{x.fillStyle='#4FC1CB';x.beginPath();x.arc(px(i),py(r.kg),5,0,7);x.fill();});
+  // קו מגמה מוחלק על נקודות מ-120 הימים האחרונים
+  const cutoff=daysAgo(120);
+  const recentIdx=rows.map((r,i)=>({r,i})).filter(o=>o.r.wdate>=cutoff);
+  if(recentIdx.length>=2){
+    let ew=Number(recentIdx[0].r.kg);
+    x.strokeStyle='#6FBF8F';x.lineWidth=2;x.setLineDash([6,5]);x.beginPath();
+    recentIdx.forEach((o,j)=>{ew=0.75*ew+0.25*Number(o.r.kg);
+      j?x.lineTo(px(o.i),py(ew)):x.moveTo(px(o.i),py(ew));});
+    x.stroke();x.setLineDash([]);
+  }
   const last=rows[rows.length-1];
   x.fillStyle='#E8EEF0';x.font='bold 22px system-ui';x.textAlign='center';
   x.fillText(last.kg+' ק"ג',px(rows.length-1),py(last.kg)-14);
