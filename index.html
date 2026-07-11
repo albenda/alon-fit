@@ -154,11 +154,8 @@
     </div>
     <div class="card">
       <b id="todayWorkoutMsg">...</b>
-      <div style="height:10px"></div>
-      <div class="row">
-        <button class="secondary" onclick="startWorkout('A')">התחל אימון A</button>
-        <button class="secondary" onclick="startWorkout('B')">התחל אימון B</button>
-      </div>
+      <div class="row" style="margin:10px 0 8px" id="weekstrip"></div>
+      <button class="primary" id="dayBtn" onclick="startNext()">...</button>
     </div>
     <div class="card">
       <b>שקילה (שישי בבוקר)</b>
@@ -294,39 +291,56 @@ const PROGRAM = {
 
 const SLOTS = [
   {slot:"בוקר", options:[
-    {label:"סנדוויץ' ביצים + חלב", kind:"dairy", kcal:600, prot:35,
-     desc:"מוכן מהערב: לחם מלא + 2 ביצים קשות מעוכות + כף חומוס + מלח פלפל. בבוקר עם כוס חלב."},
-    {label:"יוגורט + שיבולת שועל + בננה", kind:"dairy", kcal:550, prot:30,
-     desc:"יוגורט פרו + 4 כפות שיבולת שועל + בננה פרוסה + כפית דבש. ערבוב, בלי בישול."},
-    {label:"טוסט כפול גבינה + חלב", kind:"dairy", kcal:620, prot:33,
-     desc:"2 פרוסות לחם מלא עם גבינה צהובה כפולה בטוסטר/מחבת + כוס חלב."},
+    {label:"טוסט כפול גבינה צהובה + חלב", kind:"dairy", kcal:620, prot:33,
+     desc:"הקלאסיקה שלך. 2 טוסטים עם צהובה כפולה.",
+     prep:["2 פרוסות לחם + 2-3 פרוסות גבינה צהובה בכל אחת","לטוסטר / מחבת עד שנמס","כוס חלב 3% ליד"]},
+    {label:"סנדוויץ' ביצים + חומוס", kind:"parve", kcal:520, prot:28,
+     desc:"מוכן מהערב, לוקחים ביד בבוקר.",
+     prep:["2 ביצים קשות מהמלאי, מועכים במזלג","כף חומוס + מלח פלפל","למרוח בלחם/פיתה, לעטוף, מקרר","בבוקר: לקחת וללכת"]},
+    {label:"מלאווח + 2 ביצים קשות", kind:"parve", kcal:750, prot:20,
+     desc:"מלאווח קפוא למחבת - אפס עבודה, המון קלוריות.",
+     prep:["מלאווח קפוא ישר למחבת יבשה","אש בינונית, 4-5 דקות כל צד עד זהוב","עם 2 ביצים קשות מהמלאי וקטשופ/חומוס"]},
   ]},
   {slot:"צהריים", options:[
-    {label:"אורז + חזה עוף", kind:"meat", kcal:800, prot:45,
-     desc:"אורז מהסיר + חזה עוף מהנינג'ה/מחבת הגריל + כף שמן זית מעל. הכל מההכנה המרוכזת."},
+    {label:"אורז + חזה עוף מהנינג'ה", kind:"meat", kcal:800, prot:45,
+     desc:"מההכנה המרוכזת. חימום וזהו.",
+     prep:["חזה עוף מוכן מהנינג'ה גריל (מההכנה של פעמיים בשבוע)","אורז מהסיר במקרר - לחמם במחבת/כיריים","כף שמן זית מעל האורז"]},
     {label:"אורז + קציצות בקר", kind:"meat", kcal:850, prot:45,
-     desc:"2 קציצות מהמחבת (טחון + מלח + פלפל בלבד) + אורז + שמן זית."},
+     desc:"קציצות מהמחבת או מהנינג'ה.",
+     prep:["בשר טחון + מלח + פלפל, בלי כלום מעבר","6 קציצות שטוחות - מחבת גריל או נינג'ה 3-4 דק' צד","2 קציצות + אורז + שמן זית"]},
     {label:"פסטה + חזה עוף", kind:"meat", kcal:800, prot:45,
-     desc:"פסטה חמה עם שמן זית + קוביות חזה עוף מהגריל מעורבבות פנימה."},
+     desc:"כשנמאס מאורז.",
+     prep:["פסטה לפי השקית","קוביות חזה עוף מוכן מהגריל פנימה","כף שמן זית + מלח"]},
   ]},
   {slot:"ערב", options:[
-    {label:"פסטה + קוטג'", kind:"dairy", kcal:700, prot:30,
-     desc:"פסטה חמה עם שמן זית ומלח + קוטג' 5% שלם לצד או מעורבב (יוצא כמו רוטב)."},
-    {label:"חביתה 3 ביצים + לחם", kind:"parve", kcal:650, prot:28,
-     desc:"חביתה גדולה מ-3 ביצים + 2 פרוסות לחם + חומוס. פרווה - מתאים אחרי הכל."},
-    {label:"אורז + טונה + ביצה", kind:"parve", kcal:650, prot:38,
-     desc:"אורז מהסיר + קופסת טונה + ביצה קשה. פרווה, אפס הכנה."},
+    {label:"פסטה + קוטג' שמן", kind:"dairy", kcal:700, prot:30,
+     desc:"קוטג' הכי שמן שיש = הכי טעים.",
+     prep:["פסטה לפי השקית","כף שמן זית + מלח","קוטג' 7%/9% - לצד או מעורבב חם (כמו רוטב)"]},
+    {label:"חביתה 3 ביצים + טוסט צהובה", kind:"dairy", kcal:720, prot:35,
+     desc:"קומבו ביצים-גבינה מנצח.",
+     prep:["חביתה מ-3 ביצים במחבת","טוסט עם גבינה צהובה","אפשר גם את הצהובה בתוך החביתה - אומלט"]},
+    {label:"אורז + טונה + ביצה קשה", kind:"parve", kcal:650, prot:38,
+     desc:"פרווה - מתאים גם אחרי צהריים בשרי. אפס בישול.",
+     prep:["אורז מהסיר, לחמם","קופסת טונה מעל","ביצה קשה מהמלאי + מלח פלפל"]},
   ]},
   {slot:"שייק", options:[
-    {label:"שייק המסה (נינג'ה)", kind:"dairy", kcal:880, prot:55,
-     desc:"בכוס הנינג'ה: כוס חלב + 4 כפות שיבולת שועל + בננה + 2 כפות חמאת בוטנים + סקופ Allin. שים לב: חלבי (החלב וגם אבקת ה-whey)."},
-    {label:"שייק פרווה (ליום בשרי)", kind:"parve", kcal:600, prot:15,
-     desc:"מים או משקה שקדים + שיבולת שועל + בננה + 3 כפות חמאת בוטנים + דבש. בלי האבקה (היא חלבית)."},
+    {label:"שייק בננה-תמרים (נינג'ה)", kind:"dairy", kcal:700, prot:40,
+     desc:"בלי חמאת בוטנים, בלי שיבולת שועל - רק טעים.",
+     prep:["בכוס הנינג'ה: כוס חלב 3%","בננה + 4 תמרים בלי גרעין (מג'הול = הכי טעים)","סקופ Allin","לטחון 30 שניות, לשתות מהכוס"]},
+    {label:"שייק פרווה (ליום בשרי)", kind:"parve", kcal:450, prot:5,
+     desc:"בלי חלב ובלי אבקה (שניהם חלביים).",
+     prep:["מים קרים או משקה שקדים","2 בננות + 4 תמרים + כפית דבש","לטחון. פחות חלבון - להשלים בארוחות"]},
   ]},
   {slot:"ביניים", options:[
-    {label:"יוגורט פרו / סקיר", kind:"dairy", kcal:200, prot:15, desc:"פותחים ואוכלים."},
-    {label:"בננה + חמאת בוטנים", kind:"parve", kcal:300, prot:8, desc:"בננה + 2 כפות חמאת בוטנים."},
-    {label:"חופן אגוזים/בוטנים", kind:"parve", kcal:200, prot:8, desc:"חופן אחד, לא כל השקית."},
+    {label:"קוטג' שמן שלם", kind:"dairy", kcal:220, prot:26,
+     desc:"פותחים גביע, אוכלים עם כפית. חלבון מטורף.",
+     prep:["גביע קוטג' 7%/9% + מלח פלפל אם בא"]},
+    {label:"2 ביצים קשות", kind:"parve", kcal:140, prot:12,
+     desc:"מהמלאי השבועי במקרר.",
+     prep:["לקלף, מלח, לאכול"]},
+    {label:"בננה + 3 תמרים", kind:"parve", kcal:250, prot:2,
+     desc:"סוכר טבעי לפני אימון.",
+     prep:["אין מה להכין - לאכול"]},
   ]},
 ];
 const KINDLAB = {meat:"בשרי", dairy:"חלבי", parve:"פרווה"};
@@ -392,12 +406,56 @@ async function refreshToday(){
   document.getElementById('protLab').textContent=`${prot} / ${TARGET_PROT}`;
   document.getElementById('kcalBar').style.width=Math.min(100,kcal/TARGET_KCAL*100)+'%';
   document.getElementById('protBar').style.width=Math.min(100,prot/TARGET_PROT*100)+'%';
-  const {data:w}=await sb.from('fit_workouts').select('kind').eq('wdate',t).limit(1);
-  document.getElementById('todayWorkoutMsg').textContent=(w&&w.length)?`אימון ${w[0].kind} הושלם היום ✔`:'עוד לא התאמנת היום';
+  renderDayCard();
   const {data:lw}=await sb.from('fit_weight').select('wdate,kg').order('wdate',{ascending:false}).limit(1);
   document.getElementById('lastWeight').textContent=(lw&&lw.length)?`אחרון: ${lw[0].kg} ק"ג (${lw[0].wdate})`:'';
   const {count}=await sb.from('fit_workouts').select('id',{count:'exact',head:true}).gte('wdate',daysAgo(13));
   document.getElementById('streak').textContent=count||0;
+}
+
+/* ---------- smart day scheduling ---------- */
+const TRAIN_DAYS=[0,2,4]; // ראשון, שלישי, חמישי
+const DAYNAMES=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+async function nextKind(){
+  const {data}=await sb.from('fit_workouts').select('kind').in('kind',['A','B']).order('id',{ascending:false}).limit(1);
+  return (data&&data.length&&data[0].kind==='A')?'B':'A';
+}
+async function startNext(){
+  const k=await nextKind();
+  startWorkout(k);
+}
+async function renderDayCard(){
+  const t=today();
+  const dow=new Date().getDay();
+  const {data:w}=await sb.from('fit_workouts').select('kind').eq('wdate',t).limit(1);
+  const doneToday=w&&w.length;
+  const k=await nextKind();
+  const btn=document.getElementById('dayBtn');
+  const msg=document.getElementById('todayWorkoutMsg');
+  if(doneToday){
+    msg.textContent=`האימון של יום ${DAYNAMES[dow]} הושלם ✔`;
+    btn.textContent='רוצה עוד? התחל אימון נוסף';
+  }else if(TRAIN_DAYS.includes(dow)){
+    msg.textContent=`היום יום ${DAYNAMES[dow]} - יום אימון!`;
+    btn.textContent=`התחל את האימון של יום ${DAYNAMES[dow]}`;
+  }else{
+    const next=TRAIN_DAYS.find(d=>d>dow)??TRAIN_DAYS[0];
+    msg.textContent=`היום מנוחה 🌊 האימון הבא: יום ${DAYNAMES[next]}`;
+    btn.textContent='בא לי להתאמן דווקא היום';
+  }
+  // week strip: which train days this week are done
+  const weekStart=new Date();weekStart.setDate(weekStart.getDate()-dow);
+  const ws=weekStart.toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});
+  const {data:weekW}=await sb.from('fit_workouts').select('wdate').gte('wdate',ws);
+  const doneDates=(weekW||[]).map(x=>x.wdate);
+  document.getElementById('weekstrip').innerHTML=TRAIN_DAYS.map(d=>{
+    const dd=new Date(weekStart);dd.setDate(weekStart.getDate()+d);
+    const ds=dd.toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});
+    const done=doneDates.includes(ds);
+    const isToday=d===dow;
+    return `<div class="stat" style="text-align:center;${isToday?'border-color:var(--accent);':''}">
+      <div class="v">${done?'✔':'·'}</div><div class="k">${DAYNAMES[d]}</div></div>`;
+  }).join('');
 }
 
 /* ---------- workout ---------- */
@@ -477,11 +535,8 @@ function renderWorkout(){
   }
   if(!curWorkout){
     if(area)area.innerHTML=`<div class="focus"><div class="exbig">אין אימון פעיל</div>
-      <div class="setinfo" style="margin:8px 0 12px">מתחילים מעמוד "היום"</div>
-      <div class="row">
-        <button class="secondary" onclick="startWorkout('A')">התחל אימון A</button>
-        <button class="secondary" onclick="startWorkout('B')">התחל אימון B</button>
-      </div></div>`;
+      <div class="setinfo" style="margin:8px 0 12px">כפתור אחד ואני מוביל אותך</div>
+      <button class="primary" onclick="startNext()">התחל את האימון הבא</button></div>`;
     const wa=document.getElementById('wActions');if(wa)wa.style.display='none';
     const tc=document.getElementById('totalclock');if(tc)tc.textContent='';
     return;
@@ -617,7 +672,11 @@ function buildSlots(){
           <div class="l"><b>${o.label} <span class="k${o.kind}">· ${KINDLAB[o.kind]}</span></b>
             <span class="macros">${o.kcal} קק"ל · ${o.prot} חלבון</span></div>
           <div class="desc">${o.desc}</div>
-          <button onclick="logOption(${si},${oi},this)">אכלתי את זה ✔</button>
+          <div class="exdetail" id="prep${si}_${oi}"><ul style="text-align:right;margin:4px 0 8px">${(o.prep||[]).map(p=>`<li>${p}</li>`).join('')}</ul></div>
+          <div class="row">
+            <button onclick="document.getElementById('prep${si}_${oi}').classList.toggle('open')">👨‍🍳 איך מכינים</button>
+            <button onclick="logOption(${si},${oi},this)">אכלתי ✔</button>
+          </div>
         </div>`).join('')}
       </div>
     </div>`).join('');
