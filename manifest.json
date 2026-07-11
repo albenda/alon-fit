@@ -1,0 +1,9 @@
+{
+  "name": "אלון-פיט",
+  "short_name": "אלון-פיט",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#101B21",
+  "theme_color": "#101B21",
+  "icons": [{ "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }]
+}

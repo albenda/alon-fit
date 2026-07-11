@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101B21">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>אלון-פיט</title>
+<style>
+  :root{
+    --paper:#101B21; --ink:#E8EEF0; --muted:#93A6AD; --line:#24343C;
+    --card:#17262E; --accent:#4FC1CB; --accent-ink:#0B2F33; --b:#F08A5E;
+    --good:#6FBF8F; --chip:#1D2E36; --bad:#E06C5A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+  .wrap{max-width:560px;margin:0 auto;padding:14px 14px 0;}
+  h1{font-size:22px;margin:10px 0 2px;font-weight:800}
+  h2{font-size:17px;margin:18px 0 8px;font-weight:800}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;}
+  button{font-family:inherit;border:none;border-radius:12px;cursor:pointer;font-weight:800;}
+  .primary{background:var(--accent);color:var(--accent-ink);padding:14px 18px;font-size:16px;width:100%;}
+  .secondary{background:var(--chip);color:var(--ink);border:1px solid var(--line);padding:12px 14px;font-size:14px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row>*{flex:1}
+  input,select,textarea{font-family:inherit;background:var(--chip);color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;width:100%;}
+  .bar{height:14px;background:var(--chip);border-radius:999px;overflow:hidden;border:1px solid var(--line);margin:4px 0 2px;}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .3s;}
+  .bar.protein>i{background:var(--good)}
+  .barlab{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:10;}
+  nav button{background:none;color:var(--muted);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 10px;}
+  nav button.on{color:var(--accent)}
+  nav button span.ic{font-size:22px;line-height:1}
+  .page{display:none}.page.on{display:block}
+  .ex{border-bottom:1px dashed var(--line);padding:12px 0;}
+  .ex:last-child{border-bottom:none}
+  .exname{font-weight:800;font-size:15.5px}
+  .extarget{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .setrow{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .stepper{display:flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:4px;}
+  .stepper button{background:var(--card);color:var(--ink);width:38px;height:38px;font-size:18px;border:1px solid var(--line);}
+  .stepper b{min-width:64px;text-align:center;font-variant-numeric:tabular-nums;font-size:15px;}
+  .setbtn{background:var(--accent);color:var(--accent-ink);padding:12px 0;font-size:15px;flex:1;}
+  .setbtn.done{background:var(--good);}
+  .dots{display:flex;gap:5px;margin-top:6px;}
+  .dots i{width:10px;height:10px;border-radius:50%;background:var(--chip);border:1px solid var(--line);}
+  .dots i.f{background:var(--good);border-color:var(--good);}
+  .timer{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);
+    border-radius:999px;padding:8px 20px;font-size:18px;font-weight:800;z-index:20;display:none;font-variant-numeric:tabular-nums;}
+  .mealbtn{background:var(--chip);border:1px solid var(--line);color:var(--ink);padding:13px 10px;border-radius:12px;text-align:right;width:100%;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .mealbtn small{color:var(--muted);font-weight:400}
+  .mealbtn.logged{border-color:var(--good);background:color-mix(in srgb, var(--good) 12%, var(--chip));}
+  .hist{font-size:13.5px;color:var(--muted);line-height:1.7}
+  .hist b{color:var(--ink)}
+  canvas{width:100%;height:170px;background:var(--chip);border-radius:10px;border:1px solid var(--line);}
+  .pill{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);margin:2px;}
+  .big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--good);color:#08140C;
+    padding:10px 18px;border-radius:10px;font-weight:800;z-index:30;display:none;font-size:14px;}
+  #login{padding-top:60px;text-align:center;}
+  .logo{font-size:44px}
+</style>
+</head>
+<body>
+<div class="timer" id="timer">2:30</div>
+<div class="toast" id="toast"></div>
+
+<div class="wrap" id="login">
+  <div class="logo">🏋️</div>
+  <h1>אלון-פיט</h1>
+  <p class="sub">המערכת האישית שלך. התחברות חד-פעמית.</p>
+  <div class="card">
+    <input type="email" id="email" placeholder="המייל שלך" value="alonabd23@gmail.com" autocomplete="email">
+    <div style="height:8px"></div>
+    <button class="primary" onclick="sendLink()">שלח לי קישור התחברות</button>
+    <p class="sub" id="loginmsg" style="margin-top:8px"></p>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+
+  <div class="page on" id="p-today">
+    <h1 id="greet">היום</h1>
+    <p class="sub" id="todaydate"></p>
+    <div class="card">
+      <div class="barlab"><span>קלוריות</span><span id="kcalLab">0 / 2,980</span></div>
+      <div class="bar"><i id="kcalBar" style="width:0%"></i></div>
+      <div style="height:8px"></div>
+      <div class="barlab"><span>חלבון</span><span id="protLab">0 / 165</span></div>
+      <div class="bar protein"><i id="protBar" style="width:0%"></i></div>
+    </div>
+    <div class="card" id="todayWorkoutCard">
+      <b id="todayWorkoutMsg">...</b>
+      <div style="height:10px"></div>
+      <div class="row">
+        <button class="secondary" onclick="startWorkout('A')">התחל אימון A</button>
+        <button class="secondary" onclick="startWorkout('B')">התחל אימון B</button>
+      </div>
+    </div>
+    <div class="card">
+      <b>שקילה (שישי בבוקר)</b>
+      <div class="row" style="margin-top:8px">
+        <input type="number" step="0.05" id="wkg" placeholder="ק&quot;ג" inputmode="decimal">
+        <button class="secondary" style="flex:0 0 auto" onclick="saveWeight()">שמור</button>
+      </div>
+      <p class="sub" id="lastWeight"></p>
+    </div>
+    <div class="card"><b>סטרייק 🔥</b> <span id="streak" class="big" style="margin-inline-start:8px">0</span>
+      <span class="sub">אימונים בשבועיים האחרונים</span></div>
+  </div>
+
+  <div class="page" id="p-workout">
+    <h1 id="wTitle">אימון</h1>
+    <p class="sub" id="wSub">בחר אימון בעמוד "היום", או המשך פה.</p>
+    <div id="wArea"></div>
+    <div id="wActions" style="display:none">
+      <textarea id="wNotes" placeholder="הערות (לא חובה)" rows="2"></textarea>
+      <div style="height:8px"></div>
+      <button class="primary" onclick="finishWorkout()">סיים אימון ✔</button>
+      <div style="height:8px"></div>
+      <button class="secondary" style="width:100%" onclick="cancelWorkout()">בטל אימון</button>
+    </div>
+  </div>
+
+  <div class="page" id="p-food">
+    <h1>תזונה</h1>
+    <p class="sub">לחיצה = נאכל. עוד לחיצה על אותו כפתור מוסיפה שוב.</p>
+    <div id="mealBtns"></div>
+    <div class="card">
+      <b>משהו אחר / ג'אנק</b>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="freeNote" placeholder="מה אכלת">
+        <input type="number" id="freeKcal" placeholder="קק&quot;ל" inputmode="numeric" style="flex:0 0 90px">
+        <input type="number" id="freeProt" placeholder="חלבון" inputmode="numeric" style="flex:0 0 80px">
+      </div>
+      <div style="height:8px"></div>
+      <button class="secondary" style="width:100%" onclick="logFree()">הוסף</button>
+    </div>
+    <h2>מה נאכל היום</h2>
+    <div class="card hist" id="mealsToday">-</div>
+  </div>
+
+  <div class="page" id="p-track">
+    <h1>מעקב</h1>
+    <h2>משקל</h2>
+    <canvas id="chart" width="640" height="240"></canvas>
+    <h2>אימונים אחרונים</h2>
+    <div class="card hist" id="workoutHist">-</div>
+    <h2>מהשעון (Apple Watch)</h2>
+    <div class="card hist" id="watchHist">עוד אין נתונים מהשעון. ההגדרה - בקובץ ההוראות בפרויקט.</div>
+    <p class="sub" style="text-align:center;margin-top:14px"><a href="#" style="color:var(--muted)" onclick="sb.auth.signOut().then(()=>location.reload());return false;">התנתק</a></p>
+  </div>
+</div>
+
+<nav id="nav" style="display:none">
+  <button data-p="today" class="on" onclick="go('today')"><span class="ic">🏠</span>היום</button>
+  <button data-p="workout" onclick="go('workout')"><span class="ic">🏋️</span>אימון</button>
+  <button data-p="food" onclick="go('food')"><span class="ic">🍚</span>תזונה</button>
+  <button data-p="track" onclick="go('track')"><span class="ic">📈</span>מעקב</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SB_URL = "https://fawifuxyaltvkfkmsuko.supabase.co";
+const SB_KEY = "sb_publishable_fJMqMfcKPaJlxurR6xFohA_2E6NdZpA";
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const TARGET_KCAL = 2980, TARGET_PROT = 165;
+const PROGRAM = {
+  A: [
+    {ex:"סקוואט", sets:3, reps:"5", start:15, inc:2.5},
+    {ex:"לחיצת חזה", sets:3, reps:"5", start:10, inc:2.5},
+    {ex:"חתירת מוט", sets:3, reps:"8", start:12.5, inc:2.5},
+    {ex:"חתירת TRX", sets:2, reps:"מקס", start:0, inc:0},
+    {ex:"בטן גלישה TRX", sets:3, reps:"10", start:0, inc:0},
+  ],
+  B: [
+    {ex:"דדליפט", sets:3, reps:"5", start:30, inc:2.5},
+    {ex:"לחיצת כתפיים", sets:3, reps:"5", start:10, inc:2.5},
+    {ex:"פשיטת רגליים", sets:2, reps:"12", start:20, inc:0},
+    {ex:"כפיפת מרפקים מוט W", sets:2, reps:"10", start:9, inc:1.25},
+    {ex:"שק איגרוף", sets:3, reps:"2 דק'", start:0, inc:0},
+  ],
+};
+const MEALS = [
+  {slot:"בוקר", label:"סנדוויץ' הבוקר + חלב", kcal:600, prot:35},
+  {slot:"צהריים", label:"אורז + עוף + שמן זית", kcal:800, prot:45},
+  {slot:"ערב", label:"פסטה + חביתה/קוטג'", kcal:700, prot:30},
+  {slot:"שייק", label:"שייק המסה (נינג'ה)", kcal:880, prot:55},
+  {slot:"ביניים", label:"יוגורט פרו / אגוזים", kcal:200, prot:15},
+];
+
+let session=null, curWorkout=null, timerInt=null;
+
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.style.display='block';
+  setTimeout(()=>el.style.display='none',1800);}
+function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});}
+
+async function sendLink(){
+  const email=document.getElementById('email').value.trim();
+  const {error}=await sb.auth.signInWithOtp({email, options:{emailRedirectTo:location.href.split('#')[0]}});
+  document.getElementById('loginmsg').textContent = error? 'שגיאה: '+error.message : 'נשלח! פתח את המייל ולחץ על הקישור.';
+}
+
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  session=data.session;
+  if(!session){document.getElementById('login').style.display='block';return;}
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('nav').style.display='flex';
+  document.getElementById('todaydate').textContent=new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  buildMealButtons();
+  await refreshToday();
+  restoreWorkout();
+}
+sb.auth.onAuthStateChange((_e,s)=>{if(s&&!session){session=s;boot();}});
+
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.getElementById('p-'+p).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  if(p==='track') renderTrack();
+  if(p==='food') renderMealsToday();
+}
+
+/* ---------- today ---------- */
+async function refreshToday(){
+  const t=today();
+  const {data:meals}=await sb.from('fit_meals').select('kcal,protein_g').eq('mdate',t);
+  const kcal=(meals||[]).reduce((s,m)=>s+m.kcal,0), prot=(meals||[]).reduce((s,m)=>s+m.protein_g,0);
+  document.getElementById('kcalLab').textContent=`${kcal.toLocaleString()} / ${TARGET_KCAL.toLocaleString()}`;
+  document.getElementById('protLab').textContent=`${prot} / ${TARGET_PROT}`;
+  document.getElementById('kcalBar').style.width=Math.min(100,kcal/TARGET_KCAL*100)+'%';
+  document.getElementById('protBar').style.width=Math.min(100,prot/TARGET_PROT*100)+'%';
+  const {data:w}=await sb.from('fit_workouts').select('kind').eq('wdate',t).limit(1);
+  document.getElementById('todayWorkoutMsg').textContent = (w&&w.length)? `אימון ${w[0].kind} הושלם היום ✔`:'עוד לא התאמנת היום';
+  const {data:lw}=await sb.from('fit_weight').select('wdate,kg').order('wdate',{ascending:false}).limit(1);
+  document.getElementById('lastWeight').textContent = (lw&&lw.length)? `אחרון: ${lw[0].kg} ק"ג (${lw[0].wdate})`:'';
+  const since=new Date(Date.now()-13*864e5).toLocaleDateString('sv-SE');
+  const {count}=await sb.from('fit_workouts').select('id',{count:'exact',head:true}).gte('wdate',since);
+  document.getElementById('streak').textContent=count||0;
+  renderMealsToday();
+}
+
+/* ---------- workout ---------- */
+async function lastWeights(kind){
+  const {data:lastW}=await sb.from('fit_workouts').select('id').eq('kind',kind).order('id',{ascending:false}).limit(1);
+  if(!lastW||!lastW.length) return {};
+  const {data:sets}=await sb.from('fit_sets').select('exercise,weight_kg,reps').eq('workout_id',lastW[0].id);
+  const m={};
+  (sets||[]).forEach(s=>{
+    if(!m[s.exercise]) m[s.exercise]={w:Number(s.weight_kg)||0, full:true, target:null};
+    m[s.exercise].w=Math.max(m[s.exercise].w, Number(s.weight_kg)||0);
+  });
+  return m;
+}
+async function startWorkout(kind){
+  const prev=await lastWeights(kind);
+  curWorkout={kind, started:Date.now(), items:PROGRAM[kind].map(p=>({
+    ...p, weight: prev[p.ex]? prev[p.ex].w + (p.inc||0) : p.start, done:0
+  }))};
+  persistWorkout(); renderWorkout(); go('workout');
+}
+function persistWorkout(){localStorage.setItem('curWorkout',JSON.stringify(curWorkout));}
+function restoreWorkout(){const s=localStorage.getItem('curWorkout');if(s){curWorkout=JSON.parse(s);renderWorkout();}}
+function renderWorkout(){
+  if(!curWorkout){document.getElementById('wArea').innerHTML='';document.getElementById('wActions').style.display='none';return;}
+  document.getElementById('wTitle').textContent='אימון '+curWorkout.kind;
+  document.getElementById('wSub').textContent='סמן סט אחרי כל סט. הטיימר רץ לבד.';
+  const area=document.getElementById('wArea');
+  area.innerHTML='<div class="card">'+curWorkout.items.map((it,i)=>`
+    <div class="ex">
+      <div class="exname">${it.ex}</div>
+      <div class="extarget">${it.sets}×${it.reps}${it.weight? ' · '+it.weight+' ק"ג':''}</div>
+      ${it.inc? `<div class="setrow">
+        <div class="stepper">
+          <button onclick="bump(${i},-1.25)">−</button>
+          <b>${it.weight} ק"ג</b>
+          <button onclick="bump(${i},1.25)">+</button>
+        </div>
+        <button class="setbtn ${it.done>=it.sets?'done':''}" onclick="markSet(${i})">${it.done>=it.sets?'הושלם ✔':'סמן סט'}</button>
+      </div>`:`
+      <div class="setrow"><button class="setbtn ${it.done>=it.sets?'done':''}" onclick="markSet(${i})">${it.done>=it.sets?'הושלם ✔':'סמן סט'}</button></div>`}
+      <div class="dots">${Array.from({length:it.sets},(_,d)=>`<i class="${d<it.done?'f':''}"></i>`).join('')}</div>
+    </div>`).join('')+'</div>';
+  document.getElementById('wActions').style.display='block';
+}
+function bump(i,d){curWorkout.items[i].weight=Math.max(0,Math.round((curWorkout.items[i].weight+d)*100)/100);persistWorkout();renderWorkout();}
+function markSet(i){
+  const it=curWorkout.items[i];
+  if(it.done<it.sets){it.done++;persistWorkout();renderWorkout();
+    if(it.done<it.sets) startTimer(150);
+    if(navigator.vibrate) navigator.vibrate(60);
+  }
+}
+function startTimer(sec){
+  clearInterval(timerInt);
+  const el=document.getElementById('timer');el.style.display='block';
+  let left=sec;
+  const tick=()=>{el.textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+    if(left<=0){clearInterval(timerInt);el.style.display='none';if(navigator.vibrate)navigator.vibrate([200,100,200]);}
+    left--;};
+  tick();timerInt=setInterval(tick,1000);
+}
+async function finishWorkout(){
+  const dur=Math.round((Date.now()-curWorkout.started)/60000);
+  const {data:w,error}=await sb.from('fit_workouts')
+    .insert({kind:curWorkout.kind,duration_min:dur,notes:document.getElementById('wNotes').value||null})
+    .select('id').single();
+  if(error){toast('שגיאה: '+error.message);return;}
+  const rows=[];
+  curWorkout.items.forEach(it=>{for(let s=1;s<=it.done;s++)
+    rows.push({workout_id:w.id,exercise:it.ex,set_no:s,weight_kg:it.weight||null,reps:parseInt(it.reps)||null});});
+  if(rows.length) await sb.from('fit_sets').insert(rows);
+  localStorage.removeItem('curWorkout');curWorkout=null;
+  clearInterval(timerInt);document.getElementById('timer').style.display='none';
+  document.getElementById('wNotes').value='';
+  renderWorkout();toast('אימון נשמר! 💪');go('today');refreshToday();
+}
+function cancelWorkout(){if(!confirm('לבטל את האימון?'))return;
+  localStorage.removeItem('curWorkout');curWorkout=null;renderWorkout();go('today');}
+
+/* ---------- food ---------- */
+function buildMealButtons(){
+  document.getElementById('mealBtns').innerHTML=MEALS.map((m,i)=>`
+    <button class="mealbtn" id="meal${i}" onclick="logMeal(${i})">
+      <span><b>${m.slot}</b> · ${m.label}</span>
+      <small>${m.kcal} קק"ל · ${m.prot} חלבון</small>
+    </button>`).join('');
+}
+async function logMeal(i){
+  const m=MEALS[i];
+  const {error}=await sb.from('fit_meals').insert({slot:m.slot,kcal:m.kcal,protein_g:m.prot,note:m.label});
+  if(error){toast('שגיאה');return;}
+  document.getElementById('meal'+i).classList.add('logged');
+  toast(m.slot+' נרשם ✔');refreshToday();
+}
+async function logFree(){
+  const note=document.getElementById('freeNote').value||'אחר';
+  const kcal=parseInt(document.getElementById('freeKcal').value)||0;
+  const prot=parseInt(document.getElementById('freeProt').value)||0;
+  await sb.from('fit_meals').insert({slot:'אחר',kcal,protein_g:prot,note});
+  document.getElementById('freeNote').value='';document.getElementById('freeKcal').value='';document.getElementById('freeProt').value='';
+  toast('נרשם ✔');refreshToday();
+}
+async function renderMealsToday(){
+  const {data}=await sb.from('fit_meals').select('slot,kcal,protein_g,note,created_at').eq('mdate',today()).order('id');
+  document.getElementById('mealsToday').innerHTML=(data&&data.length)?
+    data.map(m=>`<b>${m.slot}</b> ${m.note||''} · ${m.kcal} קק"ל / ${m.protein_g} חלבון`).join('<br>'):'עוד כלום היום';
+  (MEALS).forEach((m,i)=>{
+    const had=(data||[]).some(x=>x.slot===m.slot);
+    const el=document.getElementById('meal'+i);if(el)el.classList.toggle('logged',had);
+  });
+}
+
+/* ---------- weight + track ---------- */
+async function saveWeight(){
+  const kg=parseFloat(document.getElementById('wkg').value);
+  if(!kg){toast('הכנס משקל');return;}
+  const {error}=await sb.from('fit_weight').upsert({wdate:today(),kg},{onConflict:'user_id,wdate'});
+  if(error){toast('שגיאה');return;}
+  document.getElementById('wkg').value='';toast('משקל נשמר ✔');refreshToday();
+}
+async function renderTrack(){
+  const {data:ws}=await sb.from('fit_weight').select('wdate,kg').order('wdate');
+  drawChart(ws||[]);
+  const {data:wo}=await sb.from('fit_workouts').select('wdate,kind,duration_min,notes').order('id',{ascending:false}).limit(10);
+  document.getElementById('workoutHist').innerHTML=(wo&&wo.length)?
+    wo.map(w=>`<b>${w.wdate}</b> · אימון ${w.kind} · ${w.duration_min||'?'} דק' ${w.notes?('· '+w.notes):''}`).join('<br>'):'עוד אין';
+  const {data:aw}=await sb.from('fit_watch').select('started_at,wtype,kcal,avg_hr').order('id',{ascending:false}).limit(10);
+  if(aw&&aw.length) document.getElementById('watchHist').innerHTML=
+    aw.map(a=>`<b>${(a.started_at||'').slice(0,10)}</b> · ${a.wtype||'אימון'} · ${a.kcal||'?'} קק"ל · דופק ${a.avg_hr||'?'}`).join('<br>');
+}
+function drawChart(rows){
+  const c=document.getElementById('chart'),x=c.getContext('2d');
+  x.clearRect(0,0,c.width,c.height);
+  x.strokeStyle='#24343C';x.beginPath();
+  for(let i=1;i<4;i++){x.moveTo(0,i*c.height/4);x.lineTo(c.width,i*c.height/4);}x.stroke();
+  if(rows.length<1){x.fillStyle='#93A6AD';x.font='20px system-ui';x.textAlign='center';
+    x.fillText('אין עדיין שקילות',c.width/2,c.height/2);return;}
+  const kgs=rows.map(r=>Number(r.kg));
+  const min=Math.min(...kgs,52)-1, max=Math.max(...kgs,55)+1;
+  const px=i=>rows.length===1?c.width/2:20+(c.width-40)*i/(rows.length-1);
+  const py=v=>c.height-14-(c.height-28)*(v-min)/(max-min);
+  x.strokeStyle='#4FC1CB';x.lineWidth=3;x.beginPath();
+  rows.forEach((r,i)=>{i?x.lineTo(px(i),py(r.kg)):x.moveTo(px(i),py(r.kg));});x.stroke();
+  rows.forEach((r,i)=>{x.fillStyle='#4FC1CB';x.beginPath();x.arc(px(i),py(r.kg),5,0,7);x.fill();});
+  const last=rows[rows.length-1];
+  x.fillStyle='#E8EEF0';x.font='bold 22px system-ui';x.textAlign='center';
+  x.fillText(last.kg+' ק"ג',px(rows.length-1),py(last.kg)-14);
+}
+boot();
+</script>
+</body>
+</html>
