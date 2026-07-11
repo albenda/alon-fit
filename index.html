@@ -333,6 +333,18 @@ const KINDLAB = {meat:"בשרי", dairy:"חלבי", parve:"פרווה"};
 
 let session=null, curWorkout=null, restInt=null, lastLogTs=0;
 
+/* self-heal: drop any workout state from older app versions, runs on every load */
+(function(){
+  try{
+    const s=localStorage.getItem('curWorkout');
+    if(!s) return;
+    const w=JSON.parse(s);
+    if(w.v!==3||typeof w.curEx!=='number'||!Array.isArray(w.items)||!w.items[0]||!Array.isArray(w.items[0].logs)){
+      localStorage.removeItem('curWorkout');
+    }
+  }catch(e){localStorage.removeItem('curWorkout');}
+})();
+
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.style.display='block';
   setTimeout(()=>el.style.display='none',2200);}
 function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});}
