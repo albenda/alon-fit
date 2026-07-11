@@ -83,6 +83,8 @@
     <div style="height:8px"></div>
     <button class="primary" onclick="sendLink()">שלח לי קישור התחברות</button>
     <p class="sub" id="loginmsg" style="margin-top:8px"></p>
+    <p class="sub">טיפ: את הקישור מהמייל פותחים בספארי.
+    בג'ימייל: לחיצה ארוכה על הקישור → העתק → הדבק בספארי.</p>
   </div>
 </div>
 
@@ -208,10 +210,27 @@ function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Je
 async function sendLink(){
   const email=document.getElementById('email').value.trim();
   const {error}=await sb.auth.signInWithOtp({email, options:{emailRedirectTo:location.href.split('#')[0]}});
-  document.getElementById('loginmsg').textContent = error? 'שגיאה: '+error.message : 'נשלח! פתח את המייל ולחץ על הקישור.';
+  let msg;
+  if(!error) msg='נשלח! פתח את המייל - לחיצה ארוכה על הקישור - העתק - הדבק בספארי.';
+  else if(/rate limit/i.test(error.message)) msg='נשלחו יותר מדי מיילים בשעה האחרונה. חכה כשעה ונסה שוב.';
+  else if(/after \d+ seconds/.test(error.message)) msg='לאט לאט 🙂 חכה חצי דקה ונסה שוב.';
+  else msg='שגיאה: '+error.message;
+  document.getElementById('loginmsg').textContent=msg;
 }
 
+function hashError(){
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get('error_description')){
+    const m=decodeURIComponent(h.get('error_description').replace(/\+/g,' '));
+    let he='שגיאת התחברות: '+m;
+    if(/expired|invalid/i.test(m)) he='הקישור פג תוקף או שכבר שומש. שלח קישור חדש ונסה שוב.';
+    if(/rate limit/i.test(m)) he='נשלחו יותר מדי מיילים - נסה שוב בעוד כשעה.';
+    document.getElementById('loginmsg').textContent=he;
+    history.replaceState(null,'',location.pathname);
+  }
+}
 async function boot(){
+  hashError();
   const {data}=await sb.auth.getSession();
   session=data.session;
   if(!session){document.getElementById('login').style.display='block';return;}
