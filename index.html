@@ -342,7 +342,7 @@ PROGRAM.other = [
 ];
 
 const SLOTS = [
-  {slot:"בוקר", options:[
+  {slot:"בוקר", win:[8,10], options:[
     {label:"טוסט כפול גבינה צהובה + חלב", kind:"dairy", kcal:620, prot:33,
      desc:"הקלאסיקה. 2 טוסטים עם צהובה כפולה.",
      prep:["2 פרוסות לחם, 2-3 פרוסות צהובה בכל אחת","טוסטר או מחבת עד שנמס","כוס חלב 3% ליד"]},
@@ -353,7 +353,7 @@ const SLOTS = [
      desc:"כמו שצריך: מלאווח, רסק עגבנייה טרי וביצה קשה.",
      prep:["מלאווח קפוא למחבת יבשה, אש בינונית, 4-5 דק' צד","עגבנייה מגוררת על פומפייה + קורט מלח","2 ביצים קשות מהמלאי. לטבול ולאכול"]},
   ]},
-  {slot:"צהריים", options:[
+  {slot:"צהריים", win:[13,15], options:[
     {label:"אורז + חזה עוף מהנינג'ה", kind:"meat", kcal:800, prot:45,
      desc:"מההכנה המרוכזת. חימום וזהו.",
      prep:["חזה עוף מוכן מהנינג'ה (ההכנה של פעמיים בשבוע)","אורז מהסיר - לחמם","כף שמן זית מעל"]},
@@ -364,7 +364,7 @@ const SLOTS = [
      desc:"קציצות של מלח-פלפל בלבד. פשוט וטעים.",
      prep:["בשר טחון + מלח + פלפל, ללוש קצת","קציצות שטוחות - מחבת גריל או נינג'ה, 3-4 דק' צד","2 קציצות + אורז + שמן זית"]},
   ]},
-  {slot:"ערב", options:[
+  {slot:"ערב", win:[19.5,21.5], options:[
     {label:"שקשוקה + לחם", kind:"parve", kcal:650, prot:28,
      desc:"המתכון הישראלי האמיתי. מחבת אחת, 12 דקות.",
      prep:["רסק עגבניות (קופסה קטנה) + חצי כוס מים למחבת עם שמן","מלח, פלפל, פפריקה אם יש. לחכות לבעבוע","3 ביצים פנימה, מכסה, 5-6 דקות עד שהחלבון לבן","לנגב עם לחם. זהו, שקשוקה של גבר"]},
@@ -378,7 +378,7 @@ const SLOTS = [
      desc:"פרווה, אפס בישול. מתאים אחרי צהריים בשרי.",
      prep:["אורז מהסיר, לחמם","קופסת טונה מעל + ביצה קשה","מלח פלפל"]},
   ]},
-  {slot:"שייק", options:[
+  {slot:"שייק", win:[16.5,18], options:[
     {label:"השייק של אלון", kind:"dairy", kcal:280, prot:28,
      desc:"המתכון שלך, כמו שאתה עושה.",
      prep:["200 מ\"ל מים קרים לכוס הנינג'ה","הרבה קרח","סקופ Allin","נגיעת סילן","1-2 אגוזי ברזיל (מקסימום 2 ביום - נכון!)","לטחון 30 שניות"]},
@@ -386,7 +386,7 @@ const SLOTS = [
      desc:"אותו שייק, עם חלב ובננה במקום מים - ליום שצריך קלוריות.",
      prep:["כוס חלב 3% במקום המים","קרח + סקופ + נגיעת סילן","+ בננה (ותמר-שניים אם בא)","לטחון"]},
   ]},
-  {slot:"ביניים", options:[
+  {slot:"ביניים", win:[11,12], options:[
     {label:"2 ביצים קשות", kind:"parve", kcal:140, prot:12,
      desc:"מהמלאי השבועי. החטיף הכי טוב שיש.",
      prep:["לקלף, מלח, לאכול"]},
@@ -498,6 +498,22 @@ async function renderStreakAndExtras(kcalToday, lastKg){
   document.getElementById('streaksub').textContent=`שבועות מלאים רצופים · השבוע: ${cur}/3`;
 
   let html='';
+  // next meal window
+  {
+    const {data:tm}=await sb.from('fit_meals').select('slot').eq('mdate',today());
+    const loggedSlots=(tm||[]).map(x=>x.slot);
+    const h=nowH();
+    const current=SLOTS.find(s=>s.win&&!loggedSlots.includes(s.slot)&&h>=s.win[0]&&h<=s.win[1]);
+    const upcoming=SLOTS.filter(s=>s.win&&!loggedSlots.includes(s.slot)&&h<s.win[0])
+      .sort((a,b)=>a.win[0]-b.win[0])[0];
+    if(current){
+      html+=`<div class="card" style="border-color:var(--accent)"><b>🍽 עכשיו זמן ${current.slot} (${fmtWin(current.win)})</b>
+        <p class="sub" style="margin:4px 0 8px">בחר אופציה בטאב תזונה ואשר כשאכלת.</p>
+        <button class="secondary" style="width:100%" onclick="go('food')">לתפריט ←</button></div>`;
+    } else if(upcoming){
+      html+=`<div class="card"><b>⏰ הארוחה הבאה: ${upcoming.slot} ב-${fmtWin(upcoming.win)}</b></div>`;
+    }
+  }
   // crash guard: week 3-4 of current run
   const abOnly=(wos||[]).filter(w=>w.kind!=='other');
   if(abOnly.length){
@@ -886,7 +902,8 @@ function buildSlots(){
   document.getElementById('mealSlots').innerHTML=SLOTS.map((s,si)=>`
     <div class="slot">
       <div class="slothead" id="sh${si}" onclick="toggleSlot(${si})">
-        <b>${s.slot}</b><span class="kindtag" id="shk${si}">בחר אופציה ▾</span>
+        <b>${s.slot} <small style="font-weight:400;color:var(--muted)">${s.win?fmtWin(s.win):''}</small></b>
+        <span class="kindtag" id="shk${si}">בחר אופציה ▾</span>
       </div>
       <div class="opts" id="opts${si}">
         ${s.options.map((o,oi)=>`
@@ -904,6 +921,17 @@ function buildSlots(){
     </div>`).join('');
 }
 function toggleSlot(si){document.getElementById('opts'+si).classList.toggle('open');}
+function fmtWin(w){const f=h=>String(Math.floor(h)).padStart(2,'0')+':'+(h%1?'30':'00');
+  return f(w[0])+'-'+f(w[1]);}
+function nowH(){const d=new Date();return d.getHours()+d.getMinutes()/60;}
+function slotStatus(sl, logged){
+  if(logged) return {t:'נרשם ✔',c:'var(--good)'};
+  if(!sl.win) return {t:'',c:'var(--muted)'};
+  const h=nowH();
+  if(h>=sl.win[0]&&h<=sl.win[1]) return {t:'עכשיו! '+fmtWin(sl.win),c:'var(--accent)'};
+  if(h<sl.win[0]) return {t:fmtWin(sl.win),c:'var(--muted)'};
+  return {t:'עבר ('+fmtWin(sl.win)+')',c:'var(--b)'};
+}
 async function lastMeatAt(){
   const sinceIso=new Date(Date.now()-MEAT_WAIT_H*3600e3).toISOString();
   const {data}=await sb.from('fit_meals').select('created_at').eq('kind','meat')
@@ -1014,8 +1042,13 @@ function markSlots(data){
   SLOTS.forEach((s,si)=>{
     const had=data.some(x=>x.slot===s.slot);
     const sh=document.getElementById('sh'+si);
-    if(sh){sh.classList.toggle('logged',had);
-      document.getElementById('shk'+si).textContent=had?'נרשם ✔':'בחר אופציה ▾';}
+    if(!sh) return;
+    sh.classList.toggle('logged',had);
+    const st=slotStatus(s,had);
+    const el=document.getElementById('shk'+si);
+    el.textContent=st.t||'בחר ▾';
+    el.style.color=st.c;
+    sh.style.borderColor = (!had&&st.t.startsWith('עכשיו'))?'var(--accent)':'';
   });
 }
 
