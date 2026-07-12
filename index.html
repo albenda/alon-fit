@@ -173,6 +173,10 @@
     </div>
     <div class="card"><b>רצף שבועות 🔥</b> <span id="streak" class="big" style="margin-inline-start:8px">0</span>
       <span class="sub" id="streaksub">שבועות רצופים עם 3 אימונים</span></div>
+    <div class="card"><b>⚡ בא לי פתאום</b>
+      <p class="sub" style="margin:4px 0 8px">מיקרו-אימון = ניצחון קטן. לא במקום אימון, בונוס.</p>
+      <div class="micro" id="microChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
     <div id="extras"></div>
   </div>
 
@@ -219,6 +223,12 @@
     </div>
     <h2>מה נאכל היום</h2>
     <div class="card" id="mealsToday">-</div>
+    <h2>🛒 רשימת קניות שבועית</h2>
+    <p class="sub">מסמנים בסופר. מתאפסת לבד כל יום ראשון. ~290 ₪ סוגר שבוע.</p>
+    <div class="card" id="shopList"></div>
+    <h2>👨‍🍳 טקס ההכנה (פעמיים בשבוע, 30 דק')</h2>
+    <p class="sub">ראשון וחמישי בערב. זה כל הבישול של השבוע.</p>
+    <div class="card" id="prepList"></div>
   </div>
 
   <div class="page" id="p-track">
@@ -384,6 +394,19 @@ const SLOTS = [
      prep:["לאכול. זהו"]},
   ]},
 ];
+const SHOPPING = [
+  ["ביצים - תבנית 30","25"],["חזה עוף פרוס - 1.5 ק\"ג","60"],["שניצלים קפואים","30"],
+  ["בשר טחון - 0.5 ק\"ג","25"],["אורז לבן - 1 ק\"ג","10"],["פסטה x2","12"],
+  ["לחם מלא + פיתות","15"],["חלב 3% x4","25"],["קוטג' שמן (7%/9%) x4","24"],
+  ["גבינה צהובה - חבילה","25"],["מלאווח קפוא - חבילה","18"],["טונה x4","24"],
+  ["חומוס + מיונז","18"],["בננות - אשכול","15"],["תמרים מג'הול","25"],
+  ["סילן","15"],["אגוזי ברזיל","20"],["רסק עגבניות x2 (לשקשוקה)","8"],
+  ["משקאות חלבון GO (אופציה)","30"],
+];
+const PREP = ["חזה עוף בנינג'ה (מגש שלם, התקע החכם)","סיר אורז גדול (2 כוסות)",
+  "8 ביצים קשות","סנדוויץ'/סלט ביצים לבוקר מחר"];
+const MICROS = ["10 שכיבות סמיכה","20 מכות לשק","10 חתירות TRX","15 סקוואט בלי משקל","30 שניות פלאנק"];
+
 const KINDLAB = {meat:"בשרי", dairy:"חלבי", parve:"פרווה"};
 
 let session=null, curWorkout=null, restInt=null, lastLogTs=0;
@@ -424,6 +447,7 @@ async function boot(){
   document.getElementById('nav').style.display='flex';
   document.getElementById('todaydate').textContent=new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
   buildSlots();
+  buildShopping();
   await refreshToday();
   restoreWorkout();
 }
@@ -812,6 +836,42 @@ function cancelWorkout(){if(!confirm('לבטל את האימון?'))return;
   localStorage.removeItem('curWorkout');curWorkout=null;clearInterval(restInt);renderWorkout();go('today');}
 
 /* ---------- food ---------- */
+function weekKey(){const d=new Date();d.setDate(d.getDate()-d.getDay());
+  return d.toLocaleDateString('sv-SE',{timeZone:'Asia/Jerusalem'});}
+function buildShopping(){
+  const key='shop-'+weekKey();
+  const state=JSON.parse(localStorage.getItem(key)||'{}');
+  document.getElementById('shopList').innerHTML=SHOPPING.map((it,i)=>`
+    <label class="mealrow" style="cursor:pointer">
+      <span style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" ${state[i]?'checked':''} onchange="shopToggle(${i},this.checked)"
+          style="width:19px;height:19px;accent-color:var(--accent)">
+        <span style="${state[i]?'text-decoration:line-through;color:var(--muted)':''}" id="shopt${i}">${it[0]}</span>
+      </span><span class="sub" style="margin:0">~${it[1]} ₪</span>
+    </label>`).join('');
+  const pkey='prep-'+weekKey();
+  const pst=JSON.parse(localStorage.getItem(pkey)||'{}');
+  document.getElementById('prepList').innerHTML=PREP.map((p,i)=>`
+    <label class="mealrow" style="cursor:pointer">
+      <span style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" ${pst[i]?'checked':''} onchange="prepToggle(${i},this.checked)"
+          style="width:19px;height:19px;accent-color:var(--good)">
+        <span style="${pst[i]?'text-decoration:line-through;color:var(--muted)':''}" id="prept${i}">${p}</span>
+      </span>
+    </label>`).join('');
+  document.getElementById('microChips').innerHTML=MICROS.map(m=>
+    `<span class="pill">${m}</span>`).join('');
+}
+function shopToggle(i,v){const key='shop-'+weekKey();
+  const st=JSON.parse(localStorage.getItem(key)||'{}');st[i]=v;
+  localStorage.setItem(key,JSON.stringify(st));
+  const el=document.getElementById('shopt'+i);
+  el.style.textDecoration=v?'line-through':'none';el.style.color=v?'var(--muted)':'';}
+function prepToggle(i,v){const key='prep-'+weekKey();
+  const st=JSON.parse(localStorage.getItem(key)||'{}');st[i]=v;
+  localStorage.setItem(key,JSON.stringify(st));
+  const el=document.getElementById('prept'+i);
+  el.style.textDecoration=v?'line-through':'none';el.style.color=v?'var(--muted)':'';}
 function buildSlots(){
   document.getElementById('mealSlots').innerHTML=SLOTS.map((s,si)=>`
     <div class="slot">
