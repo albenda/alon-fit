@@ -203,6 +203,13 @@
     <h1>תזונה</h1>
     <p class="sub">לוחצים על ארוחה ובוחרים אופציה. שומר בשר-חלב:
     אחרי בשרי תקבל אזהרה על חלבי במשך 6 שעות.</p>
+    <div class="card">
+      <b>📸 צלם מנה - ספירה אוטומטית</b>
+      <p class="sub" style="margin:4px 0 8px">לג'אנק, מסעדות וכל מה שלא בתפריט. הערכה של AI (±20-30%).</p>
+      <input type="file" id="mealPhoto" accept="image/*" capture="environment" style="display:none" onchange="analyzePhoto(this)">
+      <button class="secondary" style="width:100%" onclick="document.getElementById('mealPhoto').click()" id="photoBtn">פתח מצלמה 📷</button>
+      <div id="photoResult"></div>
+    </div>
     <div id="mealSlots"></div>
     <div class="card">
       <b>משהו אחר / ג'אנק</b>
@@ -918,6 +925,63 @@ async function logOption(si,oi,btn){
   document.getElementById('opts'+si).classList.remove('open');
   toast(SLOTS[si].slot+' נרשם ✔');
   refreshToday();renderMealsToday();
+}
+async function analyzePhoto(inp){
+  const file=inp.files&&inp.files[0];
+  if(!file) return;
+  const btn=document.getElementById('photoBtn');
+  btn.disabled=true;btn.textContent='מנתח את המנה... 🤖';
+  document.getElementById('photoResult').innerHTML='';
+  try{
+    const b64=await new Promise((res,rej)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const c=document.createElement('canvas');
+        const scale=Math.min(1, 900/Math.max(img.width,img.height));
+        c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',0.8).split(',')[1]);
+      };
+      img.onerror=rej;
+      img.src=URL.createObjectURL(file);
+    });
+    const {data:{session:ses}}=await sb.auth.getSession();
+    const r=await fetch(SB_URL+'/functions/v1/analyze-meal',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,
+        'Authorization':'Bearer '+(ses?ses.access_token:SB_KEY)},
+      body:JSON.stringify({image_b64:b64,media_type:'image/jpeg'})
+    });
+    const j=await r.json();
+    if(j.error==='missing_api_key'){toast('חסר מפתח AI בשרת - ראה הוראות');
+      document.getElementById('photoResult').innerHTML='<p class="sub" style="margin-top:8px">ההגדרה החד-פעמית של המפתח עוד לא בוצעה (אלון יודע 😉)</p>';return;}
+    if(j.error==='not_food'){toast('זה לא נראה כמו אוכל 🤨');return;}
+    if(j.error||!j.kcal){toast('לא הצלחתי לזהות - נסה תמונה ברורה יותר');return;}
+    window.__photoMeal=j;
+    document.getElementById('photoResult').innerHTML=`
+      <div class="opt" style="margin-top:10px">
+        <div class="l"><b>${j.name} <span class="k${j.kind}">· ${KINDLAB[j.kind]||''}</span></b>
+          <span class="macros">~${j.kcal} קק"ל · ${j.protein_g} חלבון</span></div>
+        <div class="desc">${j.note||''}</div>
+        <div class="row">
+          <button onclick="logPhotoMeal()">הוסף ליום ✔</button>
+          <button onclick="document.getElementById('photoResult').innerHTML=''">בטל</button>
+        </div>
+      </div>`;
+  }catch(e){toast('שגיאה בניתוח: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='פתח מצלמה 📷';inp.value='';}
+}
+async function logPhotoMeal(){
+  const j=window.__photoMeal; if(!j) return;
+  if(j.kind==='dairy'){
+    const m=await lastMeatAt();
+    if(m){const hrs=(Date.now()-m.getTime())/3600e3;
+      if(!confirm(`זה חלבי ואכלת בשרי לפני ${hrs.toFixed(1)} שעות. לרשום בכל זאת?`)) return;}
+  }
+  await sb.from('fit_meals').insert({slot:'אחר',kcal:Math.round(j.kcal),protein_g:Math.round(j.protein_g),
+    note:'📸 '+j.name,kind:['meat','dairy','parve'].includes(j.kind)?j.kind:'parve'});
+  document.getElementById('photoResult').innerHTML='';
+  toast(j.name+' נרשם ✔');refreshToday();renderMealsToday();
 }
 async function logFree(){
   if(Date.now()-lastLogTs<1500) return; lastLogTs=Date.now();
