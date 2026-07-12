@@ -300,9 +300,9 @@ const PROGRAM = {
     {ex:"חתירת מוט", sets:3, reps:"8", rest:120, start:12.5, inc:2.5, img:"img/row.webp",
      what:"כל הגב. מאזן את הלחיצות ובונה גב רחב של גולשים.",
      cues:["גו כמעט מקביל לרצפה, גב ישר ונעול","מושכים את המוט לבטן, לא לחזה","המרפקים מובילים אחורה","בלי נדנוד גוף"]},
-    {ex:"חתירת TRX", sets:2, reps:"מקס", rest:75, start:0, inc:0, img:"img/trxrow.webp",
-     what:"גב עליון ואחיזה עם משקל גוף, על הרצועות.",
-     cues:["גוף ישר וקשיח כמו קרש","מושכים את החזה לידיות","מצמידים שכמות בסוף","קשה יותר? צעד קדימה (גוף אופקי יותר)"]},
+    {ex:"חתירת דמבל ביד אחת", sets:2, reps:"10 ליד", rest:90, start:7, inc:1.25, img:"img/onearm-row.webp",
+     what:"גב עליון, יד-יד, נשענים על הספסל. פשוט ויציב.",
+     cues:["ברך ויד שמאל על הספסל, רגל ימין על הרצפה","גב שטוח ומקביל לרצפה","מושכים את הדמבל למותן, המרפק צמוד לגוף","שכמה נסגרת למעלה, מורידים לאט","10 ימין ואז 10 שמאל = סט אחד"]},
     {ex:"בטן גלישה TRX", sets:3, reps:"10", rest:45, start:0, inc:0, img:"img/trxtuck.webp",
      what:"התרגיל שלך: ליבה לפופ-אפ. רגליים ברצועות, ברכיים לחזה.",
      cues:["מצב שכיבת סמיכה, כפות רגליים ברצועות","מושכים ברכיים לחזה בשליטה","הגב לא שוקע - הבטן מחזיקה","לאט ומדויק עדיף על מהר ורשלני"]},
@@ -824,12 +824,14 @@ function commitSet(){
   curWorkout.phase='rest';curWorkout.phaseStart=Date.now();
   persistWorkout();renderWorkout();
 }
+let finishing=false;
 async function finishWorkout(){
+  if(finishing) return; finishing=true;
   const dur=Math.round((Date.now()-curWorkout.started)/60000);
   const {data:w,error}=await sb.from('fit_workouts')
     .insert({kind:curWorkout.kind,duration_min:dur,notes:document.getElementById('wNotes').value||null})
     .select('id').single();
-  if(error){toast('שגיאה: '+error.message);return;}
+  if(error){toast('שגיאה: '+error.message);finishing=false;return;}
   const rows=[];
   curWorkout.items.forEach(it=>{it.logs.forEach((lg,ix)=>
     rows.push({workout_id:w.id,exercise:it.ex,set_no:ix+1,weight_kg:lg.weight||null,
@@ -838,6 +840,7 @@ async function finishWorkout(){
   localStorage.removeItem('curWorkout');curWorkout=null;clearInterval(restInt);
   document.getElementById('wNotes').value='';
   renderWorkout();toast('אימון נשמר! 💪');go('today');refreshToday();
+  finishing=false;
 }
 function cancelWorkout(){if(!confirm('לבטל את האימון?'))return;
   localStorage.removeItem('curWorkout');curWorkout=null;clearInterval(restInt);renderWorkout();go('today');}
