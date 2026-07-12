@@ -16,10 +16,13 @@
     --good:#6FBF8F; --chip:#1D2E36; --bad:#E06C5A;
   }
   *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%;}
+  html{-webkit-text-size-adjust:100%;height:100%;}
   body{margin:0;background:var(--paper);color:var(--ink);
-    overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;
+    -webkit-tap-highlight-color:transparent;
     font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    position:fixed;inset:0;overflow:hidden;}
+  #scroll{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
     padding-top:env(safe-area-inset-top);
     padding-bottom:calc(140px + env(safe-area-inset-bottom));}
   .wrap{max-width:560px;margin:0 auto;padding:14px 14px 0;}
@@ -129,6 +132,7 @@
 <body>
 <div class="toast" id="toast"></div>
 
+<div id="scroll">
 <div class="wrap" id="login">
   <div class="logo">🏋️</div>
   <h1>אלון-פיט</h1>
@@ -234,6 +238,7 @@
   </div>
 </div>
 
+</div>
 <nav id="nav" style="display:none">
   <button data-p="today" class="on" onclick="go('today')"><span class="ic">🏠</span>היום</button>
   <button data-p="workout" onclick="go('workout')"><span class="ic">🏋️</span>אימון</button>
@@ -428,7 +433,7 @@ function go(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
   document.getElementById('p-'+p).classList.add('on');
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
-  window.scrollTo(0,0);
+  const sc=document.getElementById('scroll'); if(sc) sc.scrollTop=0;
   if(p==='track') renderTrack();
   if(p==='food') renderMealsToday();
 }
