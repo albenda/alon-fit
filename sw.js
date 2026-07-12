@@ -12,7 +12,7 @@ self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate' || u.pathname.endsWith('/index.html')) {
     // HTML: network-first - always the freshest version when online
     e.respondWith(
-      fetch(e.request).then(r => {
+      fetch(e.request, {cache:'no-store'}).then(r => {
         const c = r.clone();
         caches.open(CACHE).then(x => x.put(e.request, c));
         return r;
