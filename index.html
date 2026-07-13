@@ -453,6 +453,7 @@ async function boot(){
   document.getElementById('app').style.display='block';
   document.getElementById('nav').style.display='flex';
   document.getElementById('todaydate').textContent=new Date().toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  await loadCustomOptions();
   buildSlots();
   buildShopping();
   await refreshToday();
@@ -906,6 +907,15 @@ function buildSlots(){
         <span class="kindtag" id="shk${si}">בחר אופציה ▾</span>
       </div>
       <div class="opts" id="opts${si}">
+        ${CUSTOMS.filter(c=>c.slot===s.slot).map(c=>`
+        <div class="opt">
+          <div class="l"><b>⭐ ${c.label} <span class="k${c.kind}">· ${KINDLAB[c.kind]}</span></b>
+            <span class="macros">${c.kcal} קק"ל · ${c.protein_g} חלבון</span></div>
+          <div class="row">
+            <button onclick="logCustom(${c.id})">אכלתי ✔</button>
+            <button style="flex:0 0 52px" onclick="delCustomOption(${c.id})">✕</button>
+          </div>
+        </div>`).join('')}
         ${s.options.map((o,oi)=>`
         <div class="opt">
           <div class="l"><b>${o.label} <span class="k${o.kind}">· ${KINDLAB[o.kind]}</span></b>
@@ -1003,7 +1013,8 @@ async function analyzePhoto(inp){
           <select id="photoSlot">${slotNames.map(n=>`<option ${n===defSlot?'selected':''}>${n}</option>`).join('')}</select>
         </div>
         <div class="row">
-          <button onclick="logPhotoMeal()">הוסף ✔</button>
+          <button onclick="logPhotoMeal()">אכלתי - הוסף ✔</button>
+          <button onclick="savePhotoAsOption()">⭐ שמור כקבוע</button>
           <button onclick="document.getElementById('photoResult').innerHTML=''">בטל</button>
         </div>
       </div>`;
@@ -1022,6 +1033,40 @@ async function logPhotoMeal(){
     note:'📸 '+j.name,kind:['meat','dairy','parve'].includes(j.kind)?j.kind:'parve'});
   document.getElementById('photoResult').innerHTML='';
   toast(j.name+' נרשם ✔');refreshToday();renderMealsToday();
+}
+async function savePhotoAsOption(){
+  const j=window.__photoMeal; if(!j) return;
+  const slotSel=document.getElementById('photoSlot');
+  const slot=slotSel&&slotSel.value!=='אחר'?slotSel.value:'ביניים';
+  const {error}=await sb.from('fit_custom_options').insert({slot,label:j.name,
+    kcal:Math.round(j.kcal),protein_g:Math.round(j.protein_g),
+    kind:['meat','dairy','parve'].includes(j.kind)?j.kind:'parve'});
+  if(error){toast('שגיאה בשמירה');return;}
+  document.getElementById('photoResult').innerHTML='';
+  toast('⭐ נשמר כאופציה קבועה ב'+slot);
+  await loadCustomOptions();buildSlots();renderMealsToday();
+}
+let CUSTOMS=[];
+async function loadCustomOptions(){
+  const {data}=await sb.from('fit_custom_options').select('id,slot,label,kcal,protein_g,kind').order('id');
+  CUSTOMS=data||[];
+}
+async function delCustomOption(id){
+  if(!confirm('להסיר את האופציה הקבועה?'))return;
+  await sb.from('fit_custom_options').delete().eq('id',id);
+  await loadCustomOptions();buildSlots();renderMealsToday();
+  toast('הוסר');
+}
+async function logCustom(id){
+  if(Date.now()-lastLogTs<1500) return; lastLogTs=Date.now();
+  const o=CUSTOMS.find(x=>x.id===id); if(!o) return;
+  if(o.kind==='dairy'){
+    const m=await lastMeatAt();
+    if(m){const hrs=(Date.now()-m.getTime())/3600e3;
+      if(!confirm(`חלבי, ואכלת בשרי לפני ${hrs.toFixed(1)} שעות. לרשום?`)) return;}
+  }
+  await sb.from('fit_meals').insert({slot:o.slot,kcal:o.kcal,protein_g:o.protein_g,note:'⭐ '+o.label,kind:o.kind});
+  toast(o.label+' נרשם ✔');refreshToday();renderMealsToday();
 }
 async function logFree(){
   if(Date.now()-lastLogTs<1500) return; lastLogTs=Date.now();
