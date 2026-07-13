@@ -989,13 +989,21 @@ async function analyzePhoto(inp){
     if(j.error==='not_food'){toast('זה לא נראה כמו אוכל 🤨');return;}
     if(j.error||!j.kcal){toast('לא הצלחתי לזהות - נסה תמונה ברורה יותר');return;}
     window.__photoMeal=j;
+    const h=nowH();
+    const cur=SLOTS.find(sl=>sl.win&&h>=sl.win[0]&&h<=sl.win[1]);
+    const defSlot=cur?cur.slot:'אחר';
+    const slotNames=[...SLOTS.map(sl=>sl.slot),'אחר'];
     document.getElementById('photoResult').innerHTML=`
       <div class="opt" style="margin-top:10px">
         <div class="l"><b>${j.name} <span class="k${j.kind}">· ${KINDLAB[j.kind]||''}</span></b>
           <span class="macros">~${j.kcal} קק"ל · ${j.protein_g} חלבון</span></div>
         <div class="desc">${j.note||''}</div>
+        <div class="row" style="margin-bottom:8px">
+          <span class="sub" style="margin:0;align-self:center;flex:0 0 auto">להוסיף בתור:</span>
+          <select id="photoSlot">${slotNames.map(n=>`<option ${n===defSlot?'selected':''}>${n}</option>`).join('')}</select>
+        </div>
         <div class="row">
-          <button onclick="logPhotoMeal()">הוסף ליום ✔</button>
+          <button onclick="logPhotoMeal()">הוסף ✔</button>
           <button onclick="document.getElementById('photoResult').innerHTML=''">בטל</button>
         </div>
       </div>`;
@@ -1009,7 +1017,8 @@ async function logPhotoMeal(){
     if(m){const hrs=(Date.now()-m.getTime())/3600e3;
       if(!confirm(`זה חלבי ואכלת בשרי לפני ${hrs.toFixed(1)} שעות. לרשום בכל זאת?`)) return;}
   }
-  await sb.from('fit_meals').insert({slot:'אחר',kcal:Math.round(j.kcal),protein_g:Math.round(j.protein_g),
+  const slotSel=document.getElementById('photoSlot');
+  await sb.from('fit_meals').insert({slot:slotSel?slotSel.value:'אחר',kcal:Math.round(j.kcal),protein_g:Math.round(j.protein_g),
     note:'📸 '+j.name,kind:['meat','dairy','parve'].includes(j.kind)?j.kind:'parve'});
   document.getElementById('photoResult').innerHTML='';
   toast(j.name+' נרשם ✔');refreshToday();renderMealsToday();
